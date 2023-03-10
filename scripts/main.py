@@ -22,8 +22,8 @@ predictors = {}  # name: pipeline
 
 model_list = [
     "sac+logos+ava1-l14-linearMSE",
-    # "ava+logos-l14-reluMSE", # not working... 
-    "ava+logos-l14-linearMSE"
+    # "ava+logos-l14-reluMSE", # not working...
+    "ava+logos-l14-linearMSE",
 ]
 
 classify_styles = ["Waifu Diffusion style", "Manual"]
@@ -32,9 +32,14 @@ wd_style_score_dict = {
     6.675: "exceptional",
     6: "best aesthetic",
     5: "normal aesthetic",
-    -1: "bad aesthetic"
+    -1: "bad aesthetic",
 }
-wd_style_score_names = ["exceptional", "best aesthetic", "normal aesthetic", "bad aesthetic"]
+wd_style_score_names = [
+    "exceptional",
+    "best aesthetic",
+    "normal aesthetic",
+    "bad aesthetic",
+]
 
 wd_score_description = """
 Note: The scores used in "Waifu Diffusion style" are from this [release note](https://cafeai.notion.site/WD-1-5-Beta-2-Release-Notes-2852db5a9cdd456ba52fc5730b91acfd):
@@ -46,21 +51,30 @@ Note: The scores used in "Waifu Diffusion style" are from this [release note](ht
 | < 5 | bad aesthetic |
 """
 
+
 def library_check():
     if not launch.is_installed("clip"):
-        launch.run_pip("install git+https://github.com/openai/CLIP.git", "requirements for Laion Aesthetic")
+        launch.run_pip(
+            "install git+https://github.com/openai/CLIP.git",
+            "requirements for Laion Aesthetic",
+        )
+
 
 def model_check(name):
     if name not in predictors:
         library_check()
 
         if name in model_list:
-            predictors[name] = LaionAesthetic(model_name=f"{name}.pth", model_path=models_dir)
+            predictors[name] = LaionAesthetic(
+                model_name=f"{name}.pth", model_path=models_dir
+            )
+
 
 def unload_models():
     for name in predictors:
         del predictors[name]
     torch.cuda.empty_cache()
+
 
 def predict_score(image, model_name):
     model_check(model_name)
@@ -68,44 +82,51 @@ def predict_score(image, model_name):
 
     return score
 
-def predict_score_with_wd_style(image, model_name, step = None):
-    score = predict_score(image, model_name) # normal style
-    wd_score = calc_output_folder(score, classify_styles[0], step) # wd style
+
+def predict_score_with_wd_style(image, model_name, step=None):
+    score = predict_score(image, model_name)  # normal style
+    wd_score = calc_output_folder(score, classify_styles[0], step)  # wd style
 
     return [score, wd_score]
 
-def example_score_folders(style, step = None):
-    if style == classify_styles[0]: # wd style
+
+def example_score_folders(style, step=None):
+    if style == classify_styles[0]:  # wd style
         return wd_style_score_names
-    elif style == classify_styles[1]: # manual
+    elif style == classify_styles[1]:  # manual
         if step is None:
             step = 0.5
-        return [str(n) for n in [7, 7-step, 7-step*2, 7-step*3]]
+        return [str(n) for n in [7, 7 - step, 7 - step * 2, 7 - step * 3]]
 
-def calc_output_folder(score, style, step = None):
-    if style == classify_styles[0]: # wd style
+
+def calc_output_folder(score, style, step=None):
+    if style == classify_styles[0]:  # wd style
         for s in wd_style_scores:
             if score >= s:
                 return wd_style_score_dict[s]
-    elif style == classify_styles[1]: # manual
+    elif style == classify_styles[1]:  # manual
         max = 10
         if step is None:
             step = 0.5
-        for s in list(range(max, -1, -step)):
-            if score >= s:
-                return f"{s}"
+        for s in list(range(max * 100, -100, int(-step * 100))):
+            if score * 100 >= s:
+                return f"{s/100}"
 
-def output_dir_previews_update(dir, classify_style, step = None):
+
+def output_dir_previews_update(dir, classify_style, step=None):
     if dir == "":
         return ["", ""]
     folders = example_score_folders(classify_style, step)
     output_dir_previews = "\n".join([f"- {Path(dir)/f}" for f in folders])
 
     if classify_style == classify_styles[0]:
-        return [f"Output dirs will be created like: \n{output_dir_previews}", wd_score_description] 
+        return [
+            f"Output dirs will be created like: \n{output_dir_previews}",
+            wd_score_description,
+        ]
     else:
         output_dir_previews += f"\n- ..."
-        return [f"Output dirs will be created like: \n{output_dir_previews}", ""] 
+        return [f"Output dirs will be created like: \n{output_dir_previews}", ""]
 
 
 def copy_or_move_files(img_path: Path, to: Path, copy, together):
@@ -124,6 +145,7 @@ def copy_or_move_files(img_path: Path, to: Path, copy, together):
             shutil.copy2(img_path, to / img_path.name)
         else:
             img_path.rename(to / img_path.name)
+
 
 def batch_classify(
     input_dir, output_dir, model_name, classify_type, output_style, together, step
@@ -156,9 +178,7 @@ def batch_classify(
             if not os.path.exists(item_output_dir):
                 os.makedirs(item_output_dir)
 
-            copy_or_move_files(
-                f, item_output_dir, output_style == "Copy", together
-            )
+            copy_or_move_files(f, item_output_dir, output_style == "Copy", together)
 
             copied_or_moved = "copied" if output_style == "Copy" else "moved"
 
@@ -170,7 +190,7 @@ def batch_classify(
         return "Done!"
     except Exception as e:
         return f"Error: {e}"
-    
+
 
 def on_ui_tabs():
     with gr.Blocks(analytics_enabled=False) as ui:
@@ -199,8 +219,12 @@ def on_ui_tabs():
                             )
 
                         with gr.Column():
-                            single_aesthetic_score_result = gr.Label(label="Aesthetic Score")
-                            single_wd_aesthetic_score_result = gr.Label(label="WD Aesthetic Score")
+                            single_aesthetic_score_result = gr.Label(
+                                label="Aesthetic Score"
+                            )
+                            single_wd_aesthetic_score_result = gr.Label(
+                                label="WD Aesthetic Score"
+                            )
 
                             gr.Markdown(wd_score_description)
 
