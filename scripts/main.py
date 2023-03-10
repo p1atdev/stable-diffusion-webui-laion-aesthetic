@@ -104,7 +104,7 @@ def output_dir_previews_update(dir, classify_style, step = None):
     if classify_style == classify_styles[0]:
         return [f"Output dirs will be created like: \n{output_dir_previews}", wd_score_description] 
     else:
-        output_dir_previews += f"\n- {Path(dir)/'etc'}"
+        output_dir_previews += f"\n- ..."
         return [f"Output dirs will be created like: \n{output_dir_previews}", ""] 
 
 
@@ -284,12 +284,17 @@ def on_ui_tabs():
 
         output_dir_input.change(
             fn=output_dir_previews_update,
-            inputs=[output_dir_input, classify_type_radio],
+            inputs=[output_dir_input, classify_type_radio, manual_step_slider],
             outputs=[output_dir_previews_md, wd_score_description_md],
         )
         classify_type_radio.change(
             fn=output_dir_previews_update,
-            inputs=[output_dir_input, classify_type_radio],
+            inputs=[output_dir_input, classify_type_radio, manual_step_slider],
+            outputs=[output_dir_previews_md, wd_score_description_md],
+        )
+        manual_step_slider.change(
+            fn=output_dir_previews_update,
+            inputs=[output_dir_input, classify_type_radio, manual_step_slider],
             outputs=[output_dir_previews_md, wd_score_description_md],
         )
 
