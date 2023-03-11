@@ -84,6 +84,8 @@ def predict_score(image, model_name):
 
 
 def predict_score_with_wd_style(image, model_name, step=None):
+    if image is None:
+        return [None, None]
     score = predict_score(image, model_name)  # normal style
     wd_score = calc_output_folder(score, classify_styles[0], step)  # wd style
 
